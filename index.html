@@ -23,8 +23,7 @@
   /* ── Editor card (mirrors the Merchant Portal "Global Branding" panel) ── */
   .card { background:var(--card); border:1px solid #e6e8f2; border-radius:22px; padding:30px 28px; box-shadow:0 2px 14px rgba(30,40,90,0.04); }
   .card h1 { font-size:1.55em; font-weight:700; margin-bottom:10px; }
-  .card .sub { font-size:0.92em; line-height:1.6; color:#3b4760; margin-bottom:14px; }
-  .demo-note { font-size:0.74em; font-weight:700; color:#1f7a45; background:#e5f7ec; border-radius:8px; padding:7px 10px; margin-bottom:20px; }
+  .card .sub { font-size:0.92em; line-height:1.6; color:#3b4760; margin-bottom:22px; }
   .sec { font-size:0.68em; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:22px 0 12px; padding-top:18px; border-top:1px solid #eceef5; }
   .row { display:flex; gap:14px; }
   .row > * { flex:1; min-width:0; }
@@ -34,7 +33,9 @@
   .field select { background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%; background-size:5px 5px; background-repeat:no-repeat; cursor:pointer; }
   .field input:focus, .field select:focus { outline:none; border-color:var(--accent); }
   .field label { position:absolute; left:15px; top:6px; font-size:0.66em; font-weight:700; color:var(--muted); letter-spacing:0.04em; pointer-events:none; }
-  .field .suffix { position:absolute; right:14px; top:21px; font-size:0.85em; color:var(--muted); }
+  .field .suffix { position:absolute; right:14px; top:21px; font-size:0.85em; color:var(--muted); pointer-events:none; }
+  #subdomain { padding-right:112px; }
+  #radius { padding-right:36px; }
   .field.color input[type=text] { padding-left:50px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; text-transform:uppercase; }
   .field.color label { left:50px; }
   .field.color input[type=color] { position:absolute; left:11px; top:50%; transform:translateY(-50%); width:28px; height:28px; border:1px solid var(--line); border-radius:8px; padding:0; background:none; cursor:pointer; }
@@ -177,7 +178,6 @@
   body.pm .btn-add, body.pm .restart { color:#d4af37; }
   body.pm .sec { border-color:#22222b; }
   body.pm .prod .rm { background:#1a1a20; }
-  body.pm .demo-note { background:#14261a; color:#7fd39c; }
 </style>
 </head>
 <body>
@@ -188,7 +188,6 @@
     <div class="card">
       <h1>Global Branding</h1>
       <p class="sub">Upload your branding assets and required information to have a white labeled experience for your customers. The preview on the right is the Claims Wizard.</p>
-      <div class="demo-note">🧪 Demo only — nothing here files a claim or touches a real order.</div>
 
       <div class="field"><input type="text" id="subdomain" placeholder=" " autocomplete="off"><label>Sub Domain</label><span class="suffix">.shipinsure.net</span></div>
       <div class="field"><input type="text" id="storeName" placeholder=" " autocomplete="off"><label>Store Name</label></div>
