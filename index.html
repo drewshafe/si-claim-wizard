@@ -5,29 +5,588 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ShipInsure — Claim Wizard</title>
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/drewshafe/si-rep-hub/main/Rephubfavi.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
+<link id="cwFonts" rel="stylesheet" href="">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background:linear-gradient(135deg,#4a5fc1 0%,#6b7fd7 55%,#8b5cf6 100%); color:#fff; padding:32px; }
-  .card { max-width:520px; width:100%; text-align:center; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18);
-          border-radius:22px; padding:44px 36px; box-shadow:0 20px 60px rgba(20,16,40,0.35); backdrop-filter:blur(6px); }
-  .logo { height:34px; width:auto; margin-bottom:22px; opacity:0.95; }
-  .emoji { font-size:3.4em; line-height:1; margin-bottom:14px; }
-  h1 { font-size:2em; font-weight:900; letter-spacing:-0.02em; margin-bottom:8px; }
-  .tag { font-size:1.02em; opacity:0.9; line-height:1.55; margin-bottom:22px; }
-  .badge { display:inline-flex; align-items:center; gap:8px; font-size:0.82em; font-weight:800; text-transform:uppercase; letter-spacing:0.08em;
-           background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.3); border-radius:30px; padding:9px 18px; }
-  .foot { margin-top:26px; font-size:0.8em; opacity:0.7; }
+  :root { --page:#f4f5fb; --card:#fff; --ink:#22314a; --muted:#7a8296; --line:#d8dbe6; --accent:#6575ff; --field-bg:#fff; --chip:#eef0ff; }
+  body { font-family:'Open Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--page); color:var(--ink); min-height:100vh; letter-spacing:0.02em; }
+  [hidden] { display:none !important; }
+
+  .wrap { display:flex; align-items:flex-start; gap:32px; padding:24px; max-width:1560px; margin:0 auto; }
+  .editor { flex:0 0 420px; position:sticky; top:24px; max-height:calc(100vh - 48px); overflow:auto; border-radius:22px; }
+  .preview-col { flex:1 1 640px; min-width:0; }
+  @media (max-width:1060px) { .wrap { flex-direction:column; } .editor { position:static; flex-basis:auto; width:100%; max-height:none; } .preview-col { width:100%; } }
+
+  /* ── Editor card (mirrors the Merchant Portal "Global Branding" panel) ── */
+  .card { background:var(--card); border:1px solid #e6e8f2; border-radius:22px; padding:30px 28px; box-shadow:0 2px 14px rgba(30,40,90,0.04); }
+  .card h1 { font-size:1.55em; font-weight:700; margin-bottom:10px; }
+  .card .sub { font-size:0.92em; line-height:1.6; color:#3b4760; margin-bottom:14px; }
+  .demo-note { font-size:0.74em; font-weight:700; color:#1f7a45; background:#e5f7ec; border-radius:8px; padding:7px 10px; margin-bottom:20px; }
+  .sec { font-size:0.68em; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:22px 0 12px; padding-top:18px; border-top:1px solid #eceef5; }
+  .row { display:flex; gap:14px; }
+  .row > * { flex:1; min-width:0; }
+
+  .field { position:relative; margin-bottom:14px; }
+  .field input[type=text], .field select { width:100%; font:inherit; font-size:0.95em; color:var(--ink); background:var(--field-bg); border:1px solid var(--line); border-radius:10px; padding:20px 14px 8px; transition:border-color .15s; appearance:none; }
+  .field select { background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%; background-size:5px 5px; background-repeat:no-repeat; cursor:pointer; }
+  .field input:focus, .field select:focus { outline:none; border-color:var(--accent); }
+  .field label { position:absolute; left:15px; top:6px; font-size:0.66em; font-weight:700; color:var(--muted); letter-spacing:0.04em; pointer-events:none; }
+  .field .suffix { position:absolute; right:14px; top:21px; font-size:0.85em; color:var(--muted); }
+  .field.color input[type=text] { padding-left:50px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; text-transform:uppercase; }
+  .field.color label { left:50px; }
+  .field.color input[type=color] { position:absolute; left:11px; top:50%; transform:translateY(-50%); width:28px; height:28px; border:1px solid var(--line); border-radius:8px; padding:0; background:none; cursor:pointer; }
+  .field.color input[type=color]::-webkit-color-swatch-wrapper { padding:0; }
+  .field.color input[type=color]::-webkit-color-swatch { border:none; border-radius:7px; }
+  .field.bad input[type=text] { border-color:#e5484d; }
+
+  .up { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:16px; }
+  .up .t { font-weight:700; font-size:0.95em; margin-bottom:3px; }
+  .up .h { font-size:0.72em; line-height:1.5; color:var(--muted); font-weight:600; }
+  .up-btns { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex:0 0 auto; }
+  .btn-up { display:inline-flex; align-items:center; gap:8px; padding:8px 24px; border-radius:30px; border:1px solid #c9cdf8; background:#fff; color:var(--accent); font:inherit; font-weight:600; font-size:0.92em; cursor:pointer; }
+  .btn-up:hover { background:#f5f6ff; }
+  .btn-up span { font-size:1.3em; line-height:0.8; font-weight:400; }
+  .btn-x { font:inherit; font-size:0.72em; font-weight:700; color:#c43; background:none; border:none; cursor:pointer; }
+  .checks { margin-top:6px; display:flex; flex-wrap:wrap; gap:5px; }
+  .chk { font-size:0.68em; font-weight:700; padding:2px 7px; border-radius:20px; }
+  .chk.ok { background:#e5f7ec; color:#1f7a45; }
+  .chk.warn { background:#fff3dc; color:#9a6200; }
+
+  .prod { display:grid; grid-template-columns:1fr 92px 58px 26px; gap:8px; align-items:center; margin-bottom:8px; }
+  .prod input { width:100%; font:inherit; font-size:0.86em; color:var(--ink); background:var(--field-bg); border:1px solid var(--line); border-radius:8px; padding:9px 10px; }
+  .prod input:focus { outline:none; border-color:var(--accent); }
+  .prod-h { display:grid; grid-template-columns:1fr 92px 58px 26px; gap:8px; font-size:0.64em; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:6px; padding-left:2px; }
+  .prod .rm { width:26px; height:26px; border-radius:50%; border:none; background:#f3f3f7; color:#a33; font-size:1em; cursor:pointer; }
+  .btn-add { font:inherit; font-size:0.82em; font-weight:700; color:var(--accent); background:var(--chip); border:none; border-radius:8px; padding:8px 12px; cursor:pointer; margin-top:2px; }
+  .chkrow { display:flex; align-items:center; gap:8px; font-size:0.85em; font-weight:600; margin:6px 0 4px; cursor:pointer; }
+  .hint { font-size:0.72em; color:var(--muted); margin:-6px 0 12px; line-height:1.5; }
+
+  .actions { display:flex; gap:10px; margin-top:22px; }
+  .btn-main { flex:1; padding:13px; border-radius:30px; border:none; background:var(--accent); color:#fff; font:inherit; font-weight:600; font-size:0.98em; cursor:pointer; }
+  .btn-main:hover { filter:brightness(1.07); }
+  .btn-ghost { padding:13px 18px; border-radius:30px; border:1px solid var(--line); background:transparent; color:var(--muted); font:inherit; font-weight:600; font-size:0.9em; cursor:pointer; }
+  .btn-ghost:hover { color:var(--ink); }
+
+  /* ── Preview header ── */
+  .pv-top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .steps { display:flex; flex-wrap:wrap; gap:6px; }
+  .steps button { font:inherit; font-size:0.76em; font-weight:700; padding:7px 12px; border-radius:20px; border:1px solid var(--line); background:var(--card); color:var(--muted); cursor:pointer; }
+  .steps button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .restart { font:inherit; font-size:0.78em; font-weight:700; color:var(--accent); background:none; border:none; cursor:pointer; }
+
+  /* ── Fake browser chrome around the wizard ── */
+  .browser { border-radius:14px; overflow:hidden; border:1px solid #dfe2ec; box-shadow:0 10px 40px rgba(30,40,90,0.10); background:#fff; }
+  .b-bar { display:flex; align-items:center; gap:10px; background:#eceef3; padding:8px 12px 0; }
+  .b-dots { display:flex; gap:6px; padding-bottom:8px; }
+  .b-dots i { width:11px; height:11px; border-radius:50%; background:#ff5f57; } .b-dots i:nth-child(2) { background:#febc2e; } .b-dots i:nth-child(3) { background:#28c840; }
+  .b-tab { display:flex; align-items:center; gap:8px; background:#fff; border-radius:9px 9px 0 0; padding:8px 14px; font-size:0.76em; color:#333; max-width:260px; min-width:0; }
+  .b-tab img { width:16px; height:16px; border-radius:3px; object-fit:contain; }
+  .b-tab span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .b-url { display:flex; align-items:center; gap:8px; background:#fff; border-bottom:1px solid #e6e8ee; padding:8px 14px; }
+  .b-url div { flex:1; background:#f1f3f6; border-radius:20px; padding:6px 14px; font-size:0.78em; color:#444; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:-apple-system,BlinkMacSystemFont,sans-serif; letter-spacing:0; }
+  .b-url b { color:#111; font-weight:500; }
+
+  /* ── The claim wizard itself (ShipInsure theme defaults, overridden by branding) ── */
+  .cw { --p:#6675FF; --r:30px; --f1:'Montserrat'; --f2:'Open Sans'; --text:#06001E; --soft:#F4F4F9;
+        background:#F7F8FC; background-size:cover; background-repeat:no-repeat; min-height:760px; padding:22px 20px 60px; color:var(--text);
+        font-family:var(--f2),-apple-system,BlinkMacSystemFont,sans-serif; letter-spacing:0; font-size:15px; }
+  .cw-in { max-width:604px; margin:0 auto; }
+  .cw-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+  .cw-head img { max-height:34px; max-width:240px; width:auto; display:block; }
+  .cw-help { font:inherit; font-size:0.82em; padding:8px 22px; border-radius:var(--r); border:1px solid #c5cad6; background:rgba(255,255,255,0.85); color:var(--text); cursor:pointer; text-decoration:none; }
+  .cw-card { background:#fff; border-radius:16px; padding:46px 48px 48px; box-shadow:0 8px 30px rgba(20,24,60,0.06); }
+  .cw-bar { height:4px; border-radius:4px; background:#efeff3; margin-bottom:30px; overflow:hidden; }
+  .cw-bar i { display:block; height:100%; width:0; background:var(--p); border-radius:4px; transition:width .35s ease; }
+  .cw h2 { font-family:var(--f1),sans-serif; font-weight:700; font-size:1.55em; line-height:1.25; margin-bottom:18px; }
+  .cw p { line-height:1.55; font-size:0.9em; margin-bottom:16px; }
+  .cw-btn { display:block; width:100%; font:inherit; font-size:0.84em; font-weight:600; padding:12px 18px; border-radius:var(--r); border:1px solid var(--p); background:var(--p); color:#fff; cursor:pointer; text-align:center; text-decoration:none; transition:filter .15s; }
+  .cw-btn:hover { filter:brightness(0.94); }
+  .cw-btn.outline { background:#fff; color:var(--p); border-color:#dcdde3; }
+  .cw-btn:disabled { background:#e2e2e2; border-color:#e2e2e2; color:#a3a3a3; cursor:default; filter:none; }
+  .cw-btns { display:flex; flex-direction:column; gap:14px; margin-top:26px; }
+  .cw-nav { display:flex; gap:16px; margin-top:28px; }
+  .cw-nav .cw-btn.outline { flex:0 0 22%; border-color:color-mix(in srgb, var(--p) 35%, #fff); }
+  .cw-input { width:100%; font:inherit; font-size:0.92em; color:var(--text); border:1px solid #d6d8de; border-radius:6px; padding:13px 12px; margin-bottom:16px; background:#fff; }
+  .cw-input:focus { outline:none; border-color:var(--p); box-shadow:0 0 0 1px var(--p); }
+  .cw-facts { font-size:0.92em; line-height:1.85; margin-bottom:22px; }
+  .cw-facts b { font-weight:700; }
+  .cw-q { font-size:0.75em; margin-bottom:12px; }
+  .cw-mode { display:flex; gap:10px; margin-bottom:24px; }
+  .cw-mode button { flex:1; font:inherit; font-size:0.78em; font-weight:600; padding:10px; border-radius:var(--r); border:1px solid #dcdde3; background:#fff; color:var(--p); cursor:pointer; }
+  .cw-mode button.on { background:var(--p); border-color:var(--p); color:#fff; }
+  .cw-item { background:var(--soft); border-radius:8px; padding:18px 18px; margin-bottom:14px; }
+  .cw-item-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .cw-item-name { font-size:0.95em; }
+  .cw-item-price { font-size:0.75em; color:#423E56; margin-top:2px; }
+  .cw-toggle { flex:0 0 auto; font:inherit; font-size:0.74em; font-weight:600; padding:5px 12px; border-radius:var(--r); border:1px solid color-mix(in srgb, var(--p) 45%, #fff); background:#fff; color:var(--p); cursor:pointer; }
+  .cw-toggle.on { background:color-mix(in srgb, var(--p) 82%, #000); border-color:transparent; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.18); }
+  .cw-sel { position:relative; margin-top:18px; }
+  .cw-sel select, .cw-sel textarea { width:100%; font:inherit; font-size:0.95em; color:var(--text); background:transparent; border:1px solid #c9cad2; border-radius:6px; padding:12px 12px; appearance:none; }
+  .cw-sel select { cursor:pointer; background-image:linear-gradient(45deg,transparent 50%,#666 50%),linear-gradient(135deg,#666 50%,transparent 50%); background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%; background-size:5px 5px; background-repeat:no-repeat; }
+  .cw-sel select:focus, .cw-sel textarea:focus { outline:none; border-color:var(--p); box-shadow:0 0 0 1px var(--p); }
+  .cw-sel textarea { min-height:96px; resize:vertical; }
+  .cw-sel label { position:absolute; left:9px; top:-7px; padding:0 4px; background:var(--soft); font-size:0.7em; color:var(--text); }
+  .cw-sel.filled label { color:var(--p); }
+  .cw-drop { margin-top:14px; border:1px dashed #c9cad2; border-radius:8px; padding:24px 12px; text-align:center; font-size:0.9em; cursor:pointer; background:rgba(255,255,255,0.35); }
+  .cw-drop svg { width:22px; height:22px; display:block; margin:0 auto 6px; }
+  .cw-drop span { color:var(--p); }
+  .cw-thumbs { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .cw-thumbs img { width:58px; height:58px; object-fit:cover; border-radius:6px; border:1px solid #ddd; }
+  .cw-details { background:var(--soft); border-radius:8px; padding:18px; }
+  .cw-details .cw-sel { margin-top:0; }
+  .cw-rev-item { padding:22px 0; border-bottom:1px solid #E0E3FF; font-size:0.92em; }
+  .cw-rev-item:last-child, .cw-rev-item:has(+ hr) { border-bottom:0; }
+  .cw-rev-item .pr { font-size:0.85em; color:#423E56; }
+  .cw-rev-item div { margin-top:8px; }
+  .cw hr { border:none; border-top:1px solid #E0E3FF; margin:16px 0 22px; }
+  .cw-thanks { text-align:center; }
+  .cw-check { width:64px; height:64px; border-radius:50%; background:color-mix(in srgb, var(--p) 14%, #fff); color:var(--p); display:flex; align-items:center; justify-content:center; margin:6px auto 20px; }
+  .cw-check svg { width:32px; height:32px; }
+  .cw-status { border:1px solid #C5D0E0; border-radius:12px; padding:18px 20px; margin-bottom:18px; background:#F7F8FF; }
+  .cw-status .lbl { font-family:var(--f1),sans-serif; font-weight:700; font-size:1em; margin-bottom:6px; }
+  .cw-kv { display:grid; grid-template-columns:150px 1fr; gap:10px 14px; font-size:0.88em; }
+  .cw-kv dt { color:#3D5781; }
+  .cw-kv dd { font-weight:600; }
+  .cw-pow { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:12px; font-size:0.66em; color:#a0a3b5; }
+  .cw-pow img { height:13px; opacity:0.55; filter:grayscale(1); }
+  .cw-err { color:#FF3E33; font-size:0.78em; margin:-8px 0 12px; }
+
+  @media (max-width:640px) {
+    .wrap { padding:16px; gap:22px; }
+    .card { padding:24px 18px; }
+    .cw { padding:16px 12px 40px; }
+    .cw-card { padding:30px 20px 30px; }
+    .cw-kv { grid-template-columns:1fr; gap:2px; }
+    .cw-kv dd { margin-bottom:8px; }
+    .prod, .prod-h { grid-template-columns:1fr 74px 48px 26px; }
+    .b-tab { max-width:160px; }
+  }
+
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(90px); background:#333; color:#fff; font-size:0.85em; font-weight:600; padding:10px 18px; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,0.3); transition:transform .25s ease; z-index:200; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* ── Project Midnight (Rep Hub theme) — editor chrome only ── */
+  body.pm { --page:#07070a; --card:#111116; --ink:#ece6d6; --muted:#9a927f; --line:#2a2a33; --field-bg:#0b0b0f; --chip:#1d1a12; }
+  body.pm .card { border-color:#22222b; box-shadow:none; }
+  body.pm .card .sub { color:#b8b0a0; }
+  body.pm .btn-up { background:#0b0b0f; border-color:#3a3527; color:#d4af37; }
+  body.pm .btn-main, body.pm .steps button.on { background:linear-gradient(135deg,#b8902d,#e3c56a); border-color:transparent; color:#0a0a0a; }
+  body.pm .btn-add, body.pm .restart { color:#d4af37; }
+  body.pm .sec { border-color:#22222b; }
+  body.pm .prod .rm { background:#1a1a20; }
+  body.pm .demo-note { background:#14261a; color:#7fd39c; }
 </style>
 </head>
 <body>
-  <div class="card">
-    <img class="logo" src="https://raw.githubusercontent.com/drewshafe/si-roi-calculator/main/ShipInsure-Logo_Blue-Wht_Horizontal.png" alt="ShipInsure" onerror="this.style.display='none'">
-    <div class="emoji">🪄</div>
-    <h1>Claim Wizard</h1>
-    <p class="tag">Preview the guided, customer-facing claim-filing experience — the step-by-step wizard shoppers use to file a lost, damaged, or stolen claim in under a minute.</p>
-    <span class="badge">🚧 Coming soon</span>
-    <div class="foot">ShipInsure · Preview Designer</div>
+<div class="wrap">
+
+  <!-- ── Editor ── -->
+  <div class="editor">
+    <div class="card">
+      <h1>Global Branding</h1>
+      <p class="sub">Upload your branding assets and required information to have a white labeled experience for your customers. The preview on the right is the Claims Wizard.</p>
+      <div class="demo-note">🧪 Demo only — nothing here files a claim or touches a real order.</div>
+
+      <div class="field"><input type="text" id="subdomain" placeholder=" " autocomplete="off"><label>Sub Domain</label><span class="suffix">.shipinsure.net</span></div>
+      <div class="field"><input type="text" id="storeName" placeholder=" " autocomplete="off"><label>Store Name</label></div>
+      <div class="field"><input type="text" id="contact" placeholder=" " autocomplete="off"><label>Contact Us (email or URL)</label></div>
+      <div class="field color" id="f-primary"><input type="color" data-for="primary"><input type="text" id="primary" maxlength="7" autocomplete="off"><label>Primary Hex Color</label></div>
+      <div class="row">
+        <div class="field"><select id="font1"></select><label>Primary Font</label></div>
+        <div class="field"><select id="font2"></select><label>Secondary Font</label></div>
+      </div>
+      <div class="field"><input type="text" id="radius" placeholder=" " autocomplete="off" inputmode="numeric"><label>Button Radius</label><span class="suffix">px</span></div>
+
+      <div class="up">
+        <div><div class="t">Logo</div><div class="h">File must be .PNG file - Min height 50px, max width 240px</div><div class="checks" id="logoChecks"></div></div>
+        <div class="up-btns"><button class="btn-up" type="button" data-pick="logo"><span>+</span> Upload</button><button class="btn-x" type="button" data-clear="logo" hidden>Remove</button></div>
+      </div>
+      <div class="up">
+        <div><div class="t">Favicon</div><div class="h">File must be .PNG file 32px by 32px</div><div class="checks" id="faviconChecks"></div></div>
+        <div class="up-btns"><button class="btn-up" type="button" data-pick="favicon"><span>+</span> Upload</button><button class="btn-x" type="button" data-clear="favicon" hidden>Remove</button></div>
+      </div>
+      <div class="up">
+        <div><div class="t">Hero Image</div><div class="h">File must be .png or jpg file - 1920px by 1080px</div><div class="checks" id="heroChecks"></div></div>
+        <div class="up-btns"><button class="btn-up" type="button" data-pick="hero"><span>+</span> Upload</button><button class="btn-x" type="button" data-clear="hero" hidden>Remove</button></div>
+      </div>
+      <div class="field"><select id="heroPos"><option value="center">Center</option><option value="top">Top</option><option value="bottom">Bottom</option><option value="left">Left</option><option value="right">Right</option></select><label>Positioning</label></div>
+      <input type="file" id="fileIn" accept="image/png,image/jpeg,image/*" hidden>
+
+      <div class="sec">Demo order</div>
+      <div class="row">
+        <div class="field"><input type="text" id="orderNum" placeholder=" " autocomplete="off"><label>Order Number</label></div>
+        <div class="field"><input type="text" id="email" placeholder=" " autocomplete="off"><label>Customer Email</label></div>
+      </div>
+      <p class="hint">Order placed date is always today minus 3 days (<b id="placedHint"></b>).</p>
+      <div class="prod-h"><span>Product</span><span>Price</span><span>Qty</span><span></span></div>
+      <div id="prods"></div>
+      <button class="btn-add" type="button" id="addProd">+ Add product</button>
+      <label class="chkrow"><input type="checkbox" id="storeCredit"> Offer Store Credit as a resolution</label>
+
+      <div class="actions">
+        <button class="btn-main" type="button" onclick="copyLink()">🔗 Copy Preview Link</button>
+        <button class="btn-ghost" type="button" onclick="resetAll()">Reset</button>
+      </div>
+    </div>
   </div>
+
+  <!-- ── Preview ── -->
+  <div class="preview-col">
+    <div class="pv-top">
+      <div class="steps" id="stepNav"></div>
+      <button class="restart" type="button" onclick="go(0, true)">↺ Restart flow</button>
+    </div>
+    <div class="browser">
+      <div class="b-bar"><div class="b-dots"><i></i><i></i><i></i></div><div class="b-tab"><img id="bFav" alt=""><span id="bTitle"></span></div></div>
+      <div class="b-url"><div>🔒 <b id="bHost"></b><span id="bPath"></span></div></div>
+      <div class="cw" id="cw">
+        <div class="cw-in">
+          <div class="cw-head"><img id="cwLogo" alt="Logo"><a class="cw-help" id="cwHelp" href="#" target="_blank" rel="noopener">Need Help?</a></div>
+          <div class="cw-card" id="cwCard"></div>
+          <div class="cw-pow">Powered by <img src="shipinsure-logo-dark.png" alt="ShipInsure"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast">Link copied!</div>
+
+<script>
+  const FONTS = ['Montserrat', 'Open Sans', 'Lato', 'Merriweather', 'Nunito', 'Libre Baskerville', 'Playfair Display', 'Poppins', 'Literata', 'Source Sans 3', 'Ubuntu'];
+  const DEFAULTS = {
+    subdomain: 'demo', storeName: 'Demo Store', contact: 'care@shipinsure.io', primary: '#6675FF',
+    font1: 'Montserrat', font2: 'Open Sans', radius: '30', heroPos: 'center', logo: null, favicon: null, hero: null,
+    orderNum: '987654', email: 'customer@example.com', storeCredit: false,
+    products: [{ name: 'Classic Leather Wallet', price: '49.00', qty: 1 }, { name: 'Canvas Weekender Bag', price: '128.00', qty: 1 }]
+  };
+  const DEFAULT_LOGO = 'shipinsure-logo-color.png', DEFAULT_FAV = 'si-favicon.png';
+  // Mirrors the live merchant issue config: Damaged requires a photo.
+  const ISSUES = [{ name: 'Lost', photo: false }, { name: 'Stolen', photo: false }, { name: 'Damaged', photo: true }];
+  const STEPS = ['Landing', 'Lookup', 'Resolution Center', 'Review', 'Thank You', 'Claim Status'];
+  const TEXT_IDS = ['subdomain', 'storeName', 'contact', 'primary', 'radius', 'orderNum', 'email'];
+
+  const clone = o => JSON.parse(JSON.stringify(o));
+  let state = clone(DEFAULTS);
+  let flow;   // click-through state; never leaves the page
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function normHex(v) {
+    v = String(v || '').trim().replace(/^#?/, '#').toUpperCase();
+    if (/^#[0-9A-F]{3}$/.test(v)) v = '#' + v.slice(1).split('').map(c => c + c).join('');
+    return /^#[0-9A-F]{6}$/.test(v) ? v : null;
+  }
+  const money = v => { const n = parseFloat(String(v).replace(/[^0-9.]/g, '')); return isNaN(n) ? '0.00' : n.toFixed(2); };
+  const fmtDate = d => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const placedDate = () => { const d = new Date(); d.setDate(d.getDate() - 3); return d; };
+  const storeName = () => state.storeName.trim() || 'Your Store';
+
+  function newFlow() {
+    return { step: 0, lookupEmail: state.email, lookupOrder: state.orderNum, lookupErr: '', mode: 'specific',
+             items: state.products.map(() => ({ on: false, issue: '', resolution: '', photos: [], qty: 1 })),
+             entire: { issue: '', resolution: '', photos: [] }, details: '', claimNo: String(Math.floor(1000000 + Math.random() * 9000000)) };
+  }
+
+  // ── Branding → wizard theme ──
+  function applyTheme() {
+    const cw = $('cw');
+    cw.style.setProperty('--p', state.primary);
+    cw.style.setProperty('--r', (parseInt(state.radius, 10) >= 0 ? parseInt(state.radius, 10) : 30) + 'px');
+    cw.style.setProperty('--f1', `'${state.font1}'`);
+    cw.style.setProperty('--f2', `'${state.font2}'`);
+    cw.style.backgroundImage = state.hero ? `url(${state.hero})` : '';
+    cw.style.backgroundPosition = state.heroPos;
+    $('cwFonts').href = 'https://fonts.googleapis.com/css2?' + [...new Set([state.font1, state.font2])].map(f => 'family=' + f.replace(/\s+/g, '+') + ':wght@400;500;600;700').join('&') + '&display=swap';
+    $('cwLogo').src = state.logo || DEFAULT_LOGO;
+    const c = state.contact.trim();
+    $('cwHelp').href = !c ? '#' : c.includes('@') && !/^mailto:/i.test(c) ? 'mailto:' + c : /^(https?:|mailto:)/i.test(c) ? c : 'https://' + c;
+    $('bFav').src = state.favicon || DEFAULT_FAV;
+    $('bTitle').textContent = storeName() + ' / ShipInsure';
+    $('bHost').textContent = (state.subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || 'yourstore') + '.shipinsure.net';
+    $('bPath').textContent = flow.step === 0 ? '/' : flow.step === 5 ? '/claim-status' : '/claims';
+    $('placedHint').textContent = fmtDate(placedDate());
+    document.querySelectorAll('[data-clear]').forEach(b => b.hidden = !state[b.dataset.clear]);
+  }
+
+  // ── Wizard screens (copy mirrors the live multi-tenant claims app) ──
+  const issueOpts = (sel) => `<option value="" disabled ${sel ? '' : 'selected'} hidden></option>` + ISSUES.map(i => `<option ${i.name === sel ? 'selected' : ''}>${i.name}</option>`).join('');
+  const resOpts = (sel) => `<option value="" disabled ${sel ? '' : 'selected'} hidden></option>` + ['Refund', 'Reship'].concat(state.storeCredit ? ['Store Credit'] : []).map(r => `<option ${r === sel ? 'selected' : ''}>${r}</option>`).join('');
+  const needsPhoto = issue => !!(ISSUES.find(i => i.name === issue) || {}).photo;
+  const UPLOAD_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>';
+
+  function issueBlock(t, key) {
+    let h = `<div class="cw-sel ${t.issue ? 'filled' : ''}"><label>What is the issue?*</label><select data-k="issue" data-key="${key}">${issueOpts(t.issue)}</select></div>`;
+    if (t.issue) {
+      if (needsPhoto(t.issue)) {
+        h += `<div class="cw-drop" data-photo="${key}">${UPLOAD_SVG}Drag &amp; Drop or <span>Choose file</span> to upload</div>`;
+        if (t.photos.length) h += `<div class="cw-thumbs">${t.photos.map(p => `<img src="${p}" alt="">`).join('')}</div>`;
+      }
+      h += `<div class="cw-sel ${t.resolution ? 'filled' : ''}"><label>Resolution*</label><select data-k="resolution" data-key="${key}">${resOpts(t.resolution)}</select></div>`;
+    }
+    return h;
+  }
+
+  function claimLines() {
+    const P = state.products;
+    if (flow.mode === 'entire') return P.map(p => ({ p, issue: flow.entire.issue, resolution: flow.entire.resolution, qty: p.qty }));
+    return flow.items.map((t, i) => t.on ? { p: P[i], issue: t.issue, resolution: t.resolution, qty: t.qty } : null).filter(Boolean);
+  }
+  function canSubmit() {
+    if (!flow.details.trim()) return false;
+    const ok = t => t.issue && t.resolution && (!needsPhoto(t.issue) || t.photos.length);
+    if (flow.mode === 'entire') return !!ok(flow.entire);
+    const on = flow.items.filter(t => t.on);
+    return on.length > 0 && on.every(ok);
+  }
+
+  function screen() {
+    const s = flow.step, P = state.products, store = esc(storeName());
+    const bar = pct => `<div class="cw-bar"><i style="width:${pct}%"></i></div>`;
+    if (s === 0) return `
+      <h2>${store} is here to help</h2>
+      <p>We're here to assist you every step of the way. Click below to file a claim or visit ShipInsure.io to learn more about our protection against lost, damaged, or stolen packages.</p>
+      <div class="cw-btns"><button class="cw-btn" data-go="1">File a Claim</button><a class="cw-btn outline" href="https://shipinsure.io" target="_blank" rel="noopener">Visit Shipinsure.io</a></div>`;
+    if (s === 1) return `${bar(0)}
+      <h2>Claims Resolution</h2>
+      <p>We're sorry to hear that you're having an issue with your order. File your claim here in less than a minute.</p>
+      <input class="cw-input" id="lkEmail" placeholder="Email Address" value="${esc(flow.lookupEmail)}">
+      <input class="cw-input" id="lkOrder" placeholder="Order Number" value="${esc(flow.lookupOrder)}">
+      ${flow.lookupErr ? `<div class="cw-err">${esc(flow.lookupErr)}</div>` : ''}
+      <button class="cw-btn" data-act="lookup" style="margin-top:10px">Next</button>`;
+    if (s === 2) {
+      const n = P.reduce((a, p) => a + (parseInt(p.qty, 10) || 1), 0);
+      let body = `${bar(33)}<h2>Resolution Center</h2>
+        <div class="cw-facts">Order #: <b>#${esc(state.orderNum)}</b><br>Order placed: <b>${fmtDate(placedDate())}</b><br>Store: <b>${store}</b><br>Items: <b>${n}</b></div>
+        <div class="cw-q">How would you like to file this claim?</div>
+        <div class="cw-mode"><button data-mode="specific" class="${flow.mode === 'specific' ? 'on' : ''}">Specific items</button><button data-mode="entire" class="${flow.mode === 'entire' ? 'on' : ''}">My entire order</button></div>`;
+      if (flow.mode === 'specific') {
+        body += P.map((p, i) => {
+          const t = flow.items[i], q = parseInt(p.qty, 10) || 1;
+          return `<div class="cw-item"><div class="cw-item-top"><div><div class="cw-item-name">${esc(p.name || 'Product')}</div><div class="cw-item-price">$${money(p.price)}</div></div>
+            <button class="cw-toggle ${t.on ? 'on' : ''}" data-toggle="${i}">Issue with delivery</button></div>
+            ${t.on ? issueBlock(t, i) + (q > 1 ? `<div class="cw-sel filled"><label>Quantity</label><select data-k="qty" data-key="${i}">${Array.from({ length: q }, (_, k) => `<option ${k + 1 === t.qty ? 'selected' : ''}>${k + 1}</option>`).join('')}</select></div><div class="cw-item-price" style="margin-top:4px">How many units does this issue apply to?</div>` : '') : ''}</div>`;
+        }).join('');
+      } else {
+        body += `<div class="cw-item">${P.map(p => `<div style="margin-bottom:10px"><div class="cw-item-name">${esc(p.name || 'Product')}</div><div class="cw-item-price">$${money(p.price)}</div></div>`).join('')}${issueBlock(flow.entire, 'entire')}</div>`;
+      }
+      const showDetails = flow.mode === 'entire' || flow.items.some(t => t.on);
+      if (showDetails) body += `<div class="cw-details"><div class="cw-sel ${flow.details ? 'filled' : ''}"><label>Describe the issue(s)*</label><textarea id="cwDetails">${esc(flow.details)}</textarea></div></div>`;
+      body += `<div class="cw-nav"><button class="cw-btn outline" data-go="1">Back</button><button class="cw-btn" data-go="3" id="cwSubmit" ${canSubmit() ? '' : 'disabled'}>Submit</button></div>`;
+      return body;
+    }
+    if (s === 3) return `${bar(66)}
+      <h2>Let's confirm we got all that.</h2>
+      <p>Please make sure everything looks right, then submit. Our support team will take it from there!</p>
+      <hr><div style="font-weight:700;font-size:1.15em">Items:</div>
+      ${claimLines().map(l => `<div class="cw-rev-item"><div style="margin:0">${esc(l.p.name || 'Product')}${(parseInt(l.qty, 10) || 1) > 1 ? ` × ${l.qty}` : ''}</div><div class="pr" style="margin:0">$${money(l.p.price)}</div>
+        <div><b>Reason:</b> ${esc(l.issue)}</div><div><b>Requested resolution:</b> ${esc(l.resolution)}</div></div>`).join('')}
+      <hr><div style="font-weight:700">Additional info:</div><div style="margin-top:8px;font-size:0.92em;color:#423E56">${esc(flow.details)}</div>
+      <div class="cw-nav"><button class="cw-btn outline" data-go="2">Back</button><button class="cw-btn" data-go="4">Submit</button></div>`;
+    if (s === 4) return `${bar(100)}<div class="cw-thanks">
+      <div class="cw-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2>Thank you for submitting your claim!</h2>
+      <p>Your claim has been received and is being reviewed by one of our team. You can expect a response within <b>24 hours</b>.</p>
+      <div class="cw-btns"><button class="cw-btn" data-go="5">View your claim</button></div></div>`;
+    const lines = claimLines(), first = lines[0] || {};
+    return `<h2>Claim details</h2>
+      <div class="cw-status"><div class="lbl">Claim Status: New</div><div style="font-size:0.88em">Your claim has been opened and is being reviewed. This may take 2 - 3 days.</div></div>
+      <dl class="cw-kv">
+        <dt>Claim number</dt><dd>${flow.claimNo}</dd>
+        <dt>Order number</dt><dd>#${esc(state.orderNum)}</dd>
+        <dt>Order date</dt><dd>${fmtDate(placedDate())}</dd>
+        <dt>Submitted date</dt><dd>${fmtDate(new Date())}</dd>
+        <dt>Claim reason</dt><dd>${esc(first.issue || '—')}</dd>
+        <dt>Requested resolution</dt><dd>${esc(first.resolution || '—')}</dd>
+        <dt>Claim items</dt><dd>${lines.map(l => esc(l.p.name || 'Product')).join(', ') || '—'}</dd>
+        <dt>Package Protection</dt><dd>Package protection was included with this order</dd>
+      </dl>
+      <div class="cw-btns"><a class="cw-btn outline" href="${esc($('cwHelp').href)}" target="_blank" rel="noopener">Contact Support</a></div>`;
+  }
+
+  function renderWizard() {
+    $('cwCard').innerHTML = screen();
+    $('stepNav').innerHTML = STEPS.map((n, i) => `<button type="button" class="${i === flow.step ? 'on' : ''}" data-jump="${i}">${i + 1}. ${n}</button>`).join('');
+    $('bPath').textContent = flow.step === 0 ? '/' : flow.step === 5 ? '/claim-status' : '/claims';
+  }
+  function go(step, reset) { if (reset) flow = newFlow(); flow.step = step; renderWizard(); }
+
+  // Jumping ahead from the step pills fills in a sample claim so every screen has content.
+  function ensureSample() {
+    if (claimLines().length && canSubmit()) return;
+    flow.mode = 'specific';
+    flow.items.forEach((t, i) => Object.assign(t, i === 0 ? { on: true, issue: 'Lost', resolution: 'Reship', photos: [] } : { on: false }));
+    if (!flow.details.trim()) flow.details = 'Tracking shows delivered but the package never arrived at my door.';
+  }
+
+  $('cwCard').addEventListener('click', e => {
+    const b = e.target.closest('button,[data-photo]');
+    if (!b) return;
+    if (b.dataset.go) { if (b.disabled) return; return go(+b.dataset.go); }
+    if (b.dataset.act === 'lookup') {
+      flow.lookupEmail = $('lkEmail').value; flow.lookupOrder = $('lkOrder').value;
+      const okOrder = flow.lookupOrder.replace('#', '').trim() === String(state.orderNum).replace('#', '').trim();
+      flow.lookupErr = !/^\S+@\S+\.\S+$/.test(flow.lookupEmail.trim()) ? 'Invalid email address' : !okOrder ? `Use the demo order number ${state.orderNum}` : '';
+      return flow.lookupErr ? renderWizard() : go(2);
+    }
+    if (b.dataset.mode) { flow.mode = b.dataset.mode; return renderWizard(); }
+    if (b.dataset.toggle !== undefined) { const t = flow.items[+b.dataset.toggle]; t.on = !t.on; if (!t.on) Object.assign(t, { issue: '', resolution: '', photos: [], qty: 1 }); return renderWizard(); }
+    if (b.dataset.photo !== undefined) { photoTarget = b.dataset.photo; $('photoIn').click(); }
+  });
+  $('cwCard').addEventListener('change', e => {
+    const el = e.target, k = el.dataset.k;
+    if (!k) return;
+    const t = el.dataset.key === 'entire' ? flow.entire : flow.items[+el.dataset.key];
+    if (k === 'issue') Object.assign(t, { issue: el.value, resolution: '', photos: [] });
+    else if (k === 'qty') t.qty = +el.value;
+    else t[k] = el.value;
+    renderWizard();
+  });
+  $('cwCard').addEventListener('input', e => {
+    if (e.target.id !== 'cwDetails') return;
+    flow.details = e.target.value;
+    e.target.closest('.cw-sel').classList.toggle('filled', !!flow.details);
+    const s = $('cwSubmit'); if (s) s.disabled = !canSubmit();
+  });
+  $('stepNav').addEventListener('click', e => {
+    const b = e.target.closest('[data-jump]'); if (!b) return;
+    const to = +b.dataset.jump;
+    if (to >= 3) ensureSample();
+    go(to);
+  });
+
+  // Claim photos stay in memory only (object URLs) — never uploaded anywhere.
+  let photoTarget = null;
+  const photoIn = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', multiple: true, id: 'photoIn', hidden: true });
+  document.body.appendChild(photoIn);
+  photoIn.addEventListener('change', () => {
+    const t = photoTarget === 'entire' ? flow.entire : flow.items[+photoTarget];
+    [...photoIn.files].forEach(f => t.photos.push(URL.createObjectURL(f)));
+    photoIn.value = ''; renderWizard();
+  });
+
+  // ── Editor wiring ──
+  function fillFontSelects() {
+    ['font1', 'font2'].forEach(id => { $(id).innerHTML = FONTS.map(f => `<option>${f}</option>`).join(''); });
+  }
+  function renderProducts() {
+    $('prods').innerHTML = state.products.map((p, i) => `<div class="prod">
+      <input data-p="name" data-i="${i}" value="${esc(p.name)}" placeholder="Product name">
+      <input data-p="price" data-i="${i}" value="${esc(p.price)}" placeholder="0.00" inputmode="decimal">
+      <input data-p="qty" data-i="${i}" value="${esc(p.qty)}" inputmode="numeric">
+      <button class="rm" type="button" data-rm="${i}" title="Remove" ${state.products.length < 2 ? 'disabled' : ''}>×</button></div>`).join('');
+  }
+  function syncInputs() {
+    TEXT_IDS.forEach(id => $(id).value = state[id]);
+    $('font1').value = state.font1; $('font2').value = state.font2; $('heroPos').value = state.heroPos;
+    document.querySelector('input[type=color][data-for=primary]').value = state.primary.toLowerCase();
+    $('f-primary').classList.remove('bad');
+    $('storeCredit').checked = !!state.storeCredit;
+    renderProducts();
+  }
+  function refresh(resetFlow) { if (resetFlow) { const st = flow.step; flow = newFlow(); flow.step = st; } applyTheme(); renderWizard(); }
+
+  TEXT_IDS.forEach(id => $(id).addEventListener('input', e => {
+    if (id === 'primary') {
+      const h = normHex(e.target.value);
+      $('f-primary').classList.toggle('bad', !h && e.target.value.trim() !== '');
+      if (!h) return;
+      state.primary = h; document.querySelector('input[type=color][data-for=primary]').value = h.toLowerCase();
+    } else state[id] = e.target.value;
+    refresh(id === 'orderNum' || id === 'email');
+  }));
+  $('primary').addEventListener('blur', () => { $('primary').value = state.primary; $('f-primary').classList.remove('bad'); });
+  document.querySelector('input[type=color][data-for=primary]').addEventListener('input', e => { state.primary = e.target.value.toUpperCase(); $('primary').value = state.primary; refresh(); });
+  ['font1', 'font2', 'heroPos'].forEach(id => $(id).addEventListener('change', e => { state[id] = e.target.value; refresh(); }));
+  $('storeCredit').addEventListener('change', e => { state.storeCredit = e.target.checked; refresh(); });
+
+  $('prods').addEventListener('input', e => {
+    const el = e.target; if (!el.dataset.p) return;
+    const p = state.products[+el.dataset.i];
+    p[el.dataset.p] = el.dataset.p === 'qty' ? Math.max(1, Math.min(99, parseInt(el.value, 10) || 1)) : el.value;
+    // Product edits keep the current screen; the per-item claim choices reset to match.
+    if (el.dataset.p === 'qty' || flow.items.length !== state.products.length) refresh(true); else renderWizard();
+  });
+  $('prods').addEventListener('blur', e => { if (e.target.dataset.p === 'price') { e.target.value = state.products[+e.target.dataset.i].price = money(e.target.value); renderWizard(); } }, true);
+  $('prods').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; state.products.splice(+b.dataset.rm, 1); renderProducts(); refresh(true); });
+  $('addProd').addEventListener('click', () => { state.products.push({ name: 'New Product', price: '25.00', qty: 1 }); renderProducts(); refresh(true); });
+
+  // ── Branding uploads (re-encoded small so they can ride in the share link) ──
+  let pickTarget = null;
+  document.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => { pickTarget = b.dataset.pick; $('fileIn').click(); }));
+  document.querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => { state[b.dataset.clear] = null; $(b.dataset.clear + 'Checks').innerHTML = ''; refresh(); }));
+  const chips = (el, list) => el.innerHTML = list.map(([ok, t]) => `<span class="chk ${ok ? 'ok' : 'warn'}">${ok ? '✓' : '!'} ${t}</span>`).join('');
+  $('fileIn').addEventListener('change', e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight, png = f.type === 'image/png', which = pickTarget;
+        let maxW, maxH, type = 'image/png', q;
+        if (which === 'logo') { chips($('logoChecks'), [[png, png ? '.PNG' : 'Not .PNG'], [h >= 50, `${h}px tall${h < 50 ? ' (min 50)' : ''}`], [w <= 240, `${w}px wide${w > 240 ? ' (max 240)' : ''}`]]); maxW = 480; maxH = 120; }
+        if (which === 'favicon') { chips($('faviconChecks'), [[png, png ? '.PNG' : 'Not .PNG'], [w === 32 && h === 32, `${w}×${h}${w === 32 && h === 32 ? '' : ' (needs 32×32)'}`]]); maxW = 64; maxH = 64; }
+        if (which === 'hero') { const jpgOrPng = png || f.type === 'image/jpeg'; chips($('heroChecks'), [[jpgOrPng, jpgOrPng ? 'PNG/JPG' : 'Not PNG/JPG'], [w >= 1920 && h >= 1080, `${w}×${h}${w >= 1920 && h >= 1080 ? '' : ' (rec. 1920×1080)'}`]]); maxW = 1400; maxH = 1400; type = 'image/jpeg'; q = 0.78; }
+        const s = Math.min(1, maxW / w, maxH / h), c = document.createElement('canvas');
+        c.width = Math.round(w * s); c.height = Math.round(h * s);
+        const ctx = c.getContext('2d');
+        if (type === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        state[which] = c.toDataURL(type, q);
+        refresh();
+      };
+      img.onerror = () => alert('Could not read that image.');
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(f);
+  });
+
+  // ── Share link: branding + demo order ride in the URL hash ──
+  function encodeState() {
+    const out = {};
+    Object.keys(DEFAULTS).forEach(k => { if (JSON.stringify(state[k]) !== JSON.stringify(DEFAULTS[k])) out[k] = state[k]; });
+    return btoa(unescape(encodeURIComponent(JSON.stringify(out))));
+  }
+  // Also called by the Rep Hub's toolbar "Copy Link" (same origin).
+  window.cwPreviewLink = () => location.origin + location.pathname + '#d=' + encodeState();
+  function copyLink() {
+    const url = cwPreviewLink();
+    navigator.clipboard.writeText(url).then(() => showToast(url.length > 200000 ? 'Link copied (large — includes images)' : 'Link copied!'),
+      () => { history.replaceState(null, '', '#d=' + encodeState()); showToast('Link is in the address bar'); });
+  }
+  function applyLink() {
+    const m = location.hash.match(/[#&]d=([^&]+)/);
+    if (m) { try { Object.assign(state, JSON.parse(decodeURIComponent(escape(atob(m[1]))))); } catch (e) {} }
+    const q = new URLSearchParams(location.search);
+    if (q.get('store')) state.storeName = q.get('store');
+    if (q.get('sub')) state.subdomain = q.get('sub');
+    const h = normHex(q.get('color')); if (h) state.primary = h;
+    if (!Array.isArray(state.products) || !state.products.length) state.products = clone(DEFAULTS.products);
+    if (!FONTS.includes(state.font1)) state.font1 = DEFAULTS.font1;
+    if (!FONTS.includes(state.font2)) state.font2 = DEFAULTS.font2;
+  }
+  function resetAll() {
+    state = clone(DEFAULTS);
+    ['logoChecks', 'faviconChecks', 'heroChecks'].forEach(id => $(id).innerHTML = '');
+    history.replaceState(null, '', location.pathname + location.search);
+    syncInputs(); flow = newFlow(); applyTheme(); renderWizard();
+  }
+  function showToast(msg) { const t = $('toast'); t.textContent = msg || 'Link copied!'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
+
+  // ── Rep Hub theme hand-off ──
+  function setTheme(t) { document.body.classList.toggle('pm', t === 'midnight'); }
+  setTheme(new URLSearchParams(location.search).get('theme'));
+  window.addEventListener('message', e => { const d = e.data; if (d && d.siHub === 'apply' && d.theme) setTheme(d.theme); });
+
+  fillFontSelects();
+  applyLink();
+  flow = newFlow();
+  syncInputs();
+  applyTheme();
+  renderWizard();
+</script>
 </body>
 </html>
