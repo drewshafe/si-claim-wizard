@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Email → Claim</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/drewshafe/si-rep-hub/main/Rephubfavi.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html, body { height:100%; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#eceef5; color:#141a2e; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ── Journey steps ── */
+  .xp-top { flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:10px 14px; background:#fff; border-bottom:1px solid #e1e4ee; overflow-x:auto; }
+  .xp-steps { display:flex; align-items:center; gap:6px; flex:1; min-width:max-content; }
+  .xp-step { display:inline-flex; align-items:center; gap:7px; font:inherit; font-size:12.5px; font-weight:600; color:#5b6380; background:#f3f4f9; border:1px solid transparent; border-radius:30px; padding:6px 12px 6px 6px; cursor:pointer; white-space:nowrap; }
+  .xp-step i { font-style:normal; width:20px; height:20px; border-radius:50%; background:#fff; color:#5b6380; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; border:1px solid #d9dcea; }
+  .xp-step.on { color:#fff; background:var(--p,#6675FF); }
+  .xp-step.on i { color:var(--p,#6675FF); border-color:transparent; }
+  .xp-step.done i { background:var(--p,#6675FF); color:#fff; border-color:transparent; }
+  .xp-arrow { color:#b3b8cc; font-size:13px; }
+  .xp-replay { flex:0 0 auto; font:inherit; font-size:12px; font-weight:600; color:#5b6380; background:none; border:none; cursor:pointer; white-space:nowrap; }
+
+  /* ── Panes ── */
+  .xp-main { flex:1; min-height:0; display:flex; gap:14px; padding:14px; }
+  .xp-pane { min-width:0; min-height:0; display:flex; flex-direction:column; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 18px rgba(20,26,60,0.08); position:relative; }
+  .xp-mail { flex:0 0 44%; }
+  .xp-claim { flex:1; }
+  .xp-pane iframe { flex:1; width:100%; border:0; display:block; background:#fff; }
+
+  /* Inbox chrome around the email */
+  .mail-head { flex:0 0 auto; padding:14px 18px 12px; border-bottom:1px solid #eceef3; }
+  .mail-subj { font-size:16px; font-weight:600; margin-bottom:10px; line-height:1.3; }
+  .mail-from { display:flex; align-items:center; gap:10px; font-size:12.5px; color:#5b6380; }
+  .mail-av { width:30px; height:30px; border-radius:50%; background:var(--p,#6675FF); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex:0 0 auto; }
+  .mail-from b { color:#141a2e; font-weight:600; }
+  .mail-time { margin-left:auto; white-space:nowrap; }
+
+  /* Before the claim starts: a nudge over the wizard */
+  .xp-nudge { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#fff; background:rgba(20,26,46,0.88); padding:10px 16px; border-radius:30px; box-shadow:0 8px 24px rgba(0,0,0,0.2); white-space:nowrap; cursor:pointer; animation:bob 1.8s ease-in-out infinite; }
+  @keyframes bob { 0%,100% { transform:translate(-50%,0); } 50% { transform:translate(-50%,-5px); } }
+
+  /* Narrow (e.g. inside a Vault frame): one pane at a time */
+  body.narrow .xp-top { padding-right:76px; }   /* room for the Vault frame's "Open ↗" button */
+  body.narrow .xp-main { padding:10px; }
+  body.narrow .xp-mail { flex:1; }
+  body.narrow:not(.show-claim) .xp-claim { display:none; }
+  body.narrow.show-claim .xp-mail { display:none; }
+  body.narrow .xp-nudge { display:none; }
+  body.narrow .xp-step { padding:5px 10px 5px 5px; font-size:12px; }
+  body.narrow .mail-head { padding:10px 14px; }
+  body.narrow .mail-subj { font-size:14px; margin-bottom:6px; }
+</style>
+</head>
+<body>
+  <header class="xp-top">
+    <nav class="xp-steps" id="steps">
+      <button class="xp-step on" data-step="confirm"><i>1</i>Order protected email</button><span class="xp-arrow">→</span>
+      <button class="xp-step" data-step="delivered"><i>2</i>Delivered email</button><span class="xp-arrow">→</span>
+      <button class="xp-step" data-step="claim"><i>3</i>File a claim</button>
+    </nav>
+    <button class="xp-replay" type="button" id="replay">↺ Replay</button>
+  </header>
+  <main class="xp-main">
+    <section class="xp-pane xp-mail">
+      <div class="mail-head">
+        <div class="mail-subj" id="subj"></div>
+        <div class="mail-from"><span class="mail-av" id="av"></span><span><b id="fromName"></b> &lt;care@shipinsure.io&gt;<br>to me</span><span class="mail-time" id="when"></span></div>
+      </div>
+      <iframe id="emailF" title="Customer email"></iframe>
+    </section>
+    <section class="xp-pane xp-claim">
+      <iframe id="claimF" title="Claim wizard"></iframe>
+      <div class="xp-nudge" id="nudge">✉️ Click “File a Claim” in the email to start</div>
+    </section>
+  </main>
+
+<script>
+  // One link carries both designs: #e=<Email Automation state>&c=<Claim Wizard state> (each base64 JSON of
+  // only the fields changed from that tool's defaults). Brand basics fill in across the two, so a rep who
+  // only branded one tool still gets a consistent journey.
+  const dec = v => { try { return v ? JSON.parse(decodeURIComponent(escape(atob(v)))) : {}; } catch (e) { return {}; } };
+  const enc = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+  const hp = k => (location.hash.match(new RegExp('[#&]' + k + '=([^&]*)')) || [])[1] || '';
+  const E = dec(hp('e')), C = dec(hp('c'));
+
+  const store = E.storeName || C.storeName || 'Demo Store';
+  E.storeName = E.storeName || store; C.storeName = C.storeName || store;
+  const order = E.orderNum || C.orderNum;
+  if (order) { E.orderNum = E.orderNum || order; C.orderNum = C.orderNum || order; }
+  if (!E.logo && C.logo) E.logo = C.logo;
+  if (!C.logo && E.logo) C.logo = E.logo;
+  if (C.primary && !E.btnColor) E.btnColor = C.primary;
+  if (C.primary && !E.linkColor) E.linkColor = C.primary;
+  if (E.btnColor && !C.primary) C.primary = E.btnColor;
+  E.type = 'confirm';
+  const primary = C.primary || E.btnColor || '#6675FF';
+  document.documentElement.style.setProperty('--p', primary);
+
+  const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+  const emailF = document.getElementById('emailF'), claimF = document.getElementById('claimF');
+  emailF.src = base.replace(/si-claim-wizard\/$/, 'si-email-automation/') + '?view=1#d=' + enc(E);
+  claimF.src = base + '?view=1#d=' + enc(C);
+
+  const sender = E.senderName || 'ShipInsure';
+  document.getElementById('fromName').textContent = sender;
+  document.getElementById('av').textContent = sender.trim().charAt(0).toUpperCase() || 'S';
+
+  let step = 'confirm', claimStarted = false;
+  function setStep(s, opts) {
+    step = s;
+    const order = ['confirm', 'delivered', 'claim'];
+    document.querySelectorAll('.xp-step').forEach(b => {
+      b.classList.toggle('on', b.dataset.step === s);
+      b.classList.toggle('done', order.indexOf(b.dataset.step) < order.indexOf(s));
+    });
+    if (s !== 'claim') {
+      emailF.contentWindow && emailF.contentWindow.postMessage({ siExp: 'set', type: s }, '*');
+      document.getElementById('subj').textContent = s === 'delivered' ? `Your shipment from ${store} has been delivered!` : `Your ${store} order is covered`;
+      const d = new Date(); if (s === 'confirm') d.setDate(d.getDate() - 3);
+      document.getElementById('when').textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    document.body.classList.toggle('show-claim', s === 'claim');
+    if (s === 'claim' && !claimStarted && !(opts && opts.quiet)) startClaim();
+  }
+  function startClaim() {
+    claimStarted = true;
+    document.getElementById('nudge').hidden = true;
+    claimF.contentWindow.postMessage({ siExp: 'claim' }, '*');
+  }
+
+  window.addEventListener('message', e => {
+    const d = e.data;
+    if (!d || !d.siExp) return;
+    if (d.siExp === 'claim' && e.source === emailF.contentWindow) { claimStarted = false; setStep('claim'); }
+  });
+  document.getElementById('steps').addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (b) setStep(b.dataset.step); });
+  document.getElementById('nudge').addEventListener('click', () => setStep('claim'));
+  document.getElementById('replay').addEventListener('click', () => {
+    claimStarted = false;
+    document.getElementById('nudge').hidden = false;
+    claimF.contentWindow.postMessage({ siExp: 'restart' }, '*');
+    setStep('confirm');
+  });
+
+  const fit = () => document.body.classList.toggle('narrow', innerWidth < 980);
+  addEventListener('resize', fit); fit();
+  setStep('confirm');
+</script>
+</body>
+</html>

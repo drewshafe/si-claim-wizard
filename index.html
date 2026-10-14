@@ -180,6 +180,16 @@
   .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(90px); background:#333; color:#fff; font-size:0.85em; font-weight:600; padding:10px 18px; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,0.3); transition:transform .25s ease; z-index:200; }
   .toast.show { transform:translateX(-50%) translateY(0); }
 
+  /* ── View mode (?view=1): just the branded wizard, for the Customer Email → Claim experience ── */
+  body.view { background:#fff; }
+  body.view .editor, body.view .pv-top { display:none; }
+  body.view .wrap { padding:0; display:block; max-width:none; }
+  body.view .browser { border-radius:0; border:0; box-shadow:none; }
+  body.view .cw { min-height:100vh; }
+
+  .btn-exp { width:100%; margin-top:10px; padding:11px; border-radius:30px; border:1px dashed var(--accent); background:transparent; color:var(--accent); font:inherit; font-weight:700; font-size:0.86em; cursor:pointer; }
+  .btn-exp:hover { background:var(--chip); }
+
   /* ── Project Midnight (Rep Hub theme) — editor chrome only ── */
   body.pm { --page:#07070a; --card:#111116; --ink:#ece6d6; --muted:#9a927f; --line:#2a2a33; --field-bg:#0b0b0f; --chip:#1d1a12; }
   body.pm .card { border-color:#22222b; box-shadow:none; }
@@ -241,6 +251,7 @@
         <button class="btn-main" type="button" onclick="copyLink()">🔗 Copy Preview Link</button>
         <button class="btn-ghost" type="button" onclick="resetAll()">Reset</button>
       </div>
+      <button class="btn-exp" type="button" onclick="copyExperience()" title="Combines this claims flow with your latest Email Automation design">✉️ → 🛡️ Copy Email → Claim Experience link</button>
     </div>
   </div>
 
@@ -427,6 +438,7 @@
     $('cwCard').innerHTML = screen();
     $('stepNav').innerHTML = STEPS.map((n, i) => `<button type="button" class="${i === flow.step ? 'on' : ''}" data-jump="${i}">${i + 1}. ${n}</button>`).join('');
     $('bPath').textContent = flow.step === 0 ? '/' : flow.step === 5 ? '/claim-status' : '/claims';
+    saveShared();
   }
   function go(step, reset) { if (reset) flow = newFlow(); flow.step = step; renderWizard(); }
 
@@ -598,6 +610,36 @@
     syncInputs(); flow = newFlow(); applyTheme(); renderWizard();
   }
   function showToast(msg) { const t = $('toast'); t.textContent = msg || 'Link copied!'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
+
+  // ── Customer Email → Claim experience ──
+  // The rep's latest design is kept in this browser (same origin as Email Automation) so either
+  // tool can build one combined link. View mode never writes it back.
+  const VIEW = new URLSearchParams(location.search).get('view') === '1';
+  let _saveT = 0;
+  function saveShared() {
+    if (VIEW) return;
+    clearTimeout(_saveT);
+    _saveT = setTimeout(() => { try { localStorage.setItem('si_exp_claim', encodeState()); } catch (e) {} }, 250);
+  }
+  function experienceLink() {
+    let e = '';
+    try { e = localStorage.getItem('si_exp_email') || ''; } catch (err) {}
+    return location.origin + '/si-claim-wizard/experience.html#e=' + e + '&c=' + encodeState();
+  }
+  function copyExperience() {
+    navigator.clipboard.writeText(experienceLink()).then(() => showToast('Experience link copied!'), () => showToast('Could not copy'));
+  }
+  if (VIEW) {
+    document.body.classList.add('view');
+    // "File a Claim" from the email lands on the lookup step, prefilled like the real email link.
+    window.addEventListener('message', e => {
+      const d = e.data;
+      if (!d || !d.siExp) return;
+      if (d.siExp === 'claim') { flow = newFlow(); go(1); scrollTo(0, 0); }
+      if (d.siExp === 'restart') { go(0, true); scrollTo(0, 0); }
+    });
+    $('cwCard').addEventListener('click', () => parent.postMessage({ siExp: 'step', step: flow.step }, '*'));
+  }
 
   // ── Rep Hub theme hand-off ──
   function setTheme(t) { document.body.classList.toggle('pm', t === 'midnight'); }
