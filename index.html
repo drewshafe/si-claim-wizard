@@ -631,11 +631,12 @@
   }
   if (VIEW) {
     document.body.classList.add('view');
-    // "File a Claim" from the email lands on the lookup step, prefilled like the real email link.
+    // "File a Claim" from an email lands already signed in (Resolution Center), like the real email link;
+    // jumping straight to the claim step shows the order lookup first.
     window.addEventListener('message', e => {
       const d = e.data;
       if (!d || !d.siExp) return;
-      if (d.siExp === 'claim') { flow = newFlow(); go(1); scrollTo(0, 0); }
+      if (d.siExp === 'claim') { flow = newFlow(); go(d.signedIn ? 2 : 1); scrollTo(0, 0); }
       if (d.siExp === 'restart') { go(0, true); scrollTo(0, 0); }
     });
     $('cwCard').addEventListener('click', () => parent.postMessage({ siExp: 'step', step: flow.step }, '*'));

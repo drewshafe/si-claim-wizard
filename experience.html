@@ -125,21 +125,22 @@
       document.getElementById('when').textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
     document.body.classList.toggle('show-claim', s === 'claim');
-    if (s === 'claim' && !claimStarted && !(opts && opts.quiet)) startClaim();
+    if (s === 'claim' && !claimStarted) startClaim(!!(opts && opts.signedIn));
   }
-  function startClaim() {
+  // From an email's File a Claim: already signed in (Resolution Center). From the step chip: order lookup.
+  function startClaim(signedIn) {
     claimStarted = true;
     document.getElementById('nudge').hidden = true;
-    claimF.contentWindow.postMessage({ siExp: 'claim' }, '*');
+    claimF.contentWindow.postMessage({ siExp: 'claim', signedIn: signedIn }, '*');
   }
 
   window.addEventListener('message', e => {
     const d = e.data;
     if (!d || !d.siExp) return;
-    if (d.siExp === 'claim' && e.source === emailF.contentWindow) { claimStarted = false; setStep('claim'); }
+    if (d.siExp === 'claim' && e.source === emailF.contentWindow) { claimStarted = false; setStep('claim', { signedIn: true }); }
   });
   document.getElementById('steps').addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (b) setStep(b.dataset.step); });
-  document.getElementById('nudge').addEventListener('click', () => setStep('claim'));
+  document.getElementById('nudge').addEventListener('click', () => { claimStarted = false; setStep('claim', { signedIn: true }); });
   document.getElementById('replay').addEventListener('click', () => {
     claimStarted = false;
     document.getElementById('nudge').hidden = false;
