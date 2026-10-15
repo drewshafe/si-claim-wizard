@@ -157,11 +157,6 @@
   .cw-thanks { text-align:center; }
   .cw-check { width:64px; height:64px; border-radius:50%; background:color-mix(in srgb, var(--p) 14%, #fff); color:var(--p); display:flex; align-items:center; justify-content:center; margin:6px auto 20px; }
   .cw-check svg { width:32px; height:32px; }
-  .cw-status { border:1px solid #C5D0E0; border-radius:12px; padding:18px 20px; margin-bottom:18px; background:#F7F8FF; }
-  .cw-status .lbl { font-family:var(--f1),sans-serif; font-weight:700; font-size:1em; margin-bottom:6px; }
-  .cw-kv { display:grid; grid-template-columns:150px 1fr; gap:10px 14px; font-size:0.88em; }
-  .cw-kv dt { color:#3D5781; }
-  .cw-kv dd { font-weight:600; }
   .cw-pow { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:12px; font-size:0.66em; color:#a0a3b5; }
   .cw-pow img { height:13px; opacity:0.55; filter:grayscale(1); }
   .cw-err { color:#FF3E33; font-size:0.78em; margin:-8px 0 12px; }
@@ -171,8 +166,6 @@
     .card { padding:24px 18px; }
     .cw { padding:16px 12px 40px; }
     .cw-card { padding:30px 20px 30px; }
-    .cw-kv { grid-template-columns:1fr; gap:2px; }
-    .cw-kv dd { margin-bottom:8px; }
     .prod, .prod-h { grid-template-columns:1fr 74px 48px 26px; }
     .b-tab { max-width:160px; }
   }
@@ -287,7 +280,7 @@
   const DEFAULT_LOGO = 'shipinsure-logo-color.png', DEFAULT_FAV = 'si-favicon.png';
   // Mirrors the live merchant issue config: Damaged requires a photo.
   const ISSUES = [{ name: 'Lost', photo: false }, { name: 'Stolen', photo: false }, { name: 'Damaged', photo: true }];
-  const STEPS = ['Landing', 'Lookup', 'Resolution Center', 'Review', 'Thank You', 'Claim Status'];
+  const STEPS = ['Landing', 'Lookup', 'Resolution Center', 'Review', 'Thank You'];
   const TEXT_IDS = ['subdomain', 'storeName', 'contact', 'primary', 'radius', 'orderNum', 'email', 'creditBonus'];
 
   const clone = o => JSON.parse(JSON.stringify(o));
@@ -309,7 +302,7 @@
   function newFlow() {
     return { step: 0, lookupEmail: state.email, lookupOrder: state.orderNum, lookupErr: '', mode: 'specific',
              items: state.products.map(() => ({ on: false, issue: '', resolution: '', photos: [], qty: 1 })),
-             entire: { issue: '', resolution: '', photos: [] }, details: '', claimNo: String(Math.floor(1000000 + Math.random() * 9000000)) };
+             entire: { issue: '', resolution: '', photos: [] }, details: '' };
   }
 
   // ── Branding → wizard theme ──
@@ -328,7 +321,7 @@
     $('bFav').src = state.favicon || DEFAULT_FAV;
     $('bTitle').textContent = storeName() + ' / ShipInsure';
     $('bHost').textContent = (state.subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || 'yourstore') + '.shipinsure.net';
-    $('bPath').textContent = flow.step === 0 ? '/' : flow.step === 5 ? '/claim-status' : '/claims';
+    $('bPath').textContent = flow.step === 0 ? '/' : '/claims';
     $('placedHint').textContent = fmtDate(placedDate());
     document.querySelectorAll('[data-clear]').forEach(b => b.hidden = !state[b.dataset.clear]);
   }
@@ -413,31 +406,17 @@
         <div><b>Reason:</b> ${esc(l.issue)}</div><div><b>Requested resolution:</b> ${esc(l.resolution)}</div></div>`).join('')}
       <hr><div style="font-weight:700">Additional info:</div><div style="margin-top:8px;font-size:0.92em;color:#423E56">${esc(flow.details)}</div>
       <div class="cw-nav"><button class="cw-btn outline" data-go="2">Back</button><button class="cw-btn" data-go="4">Submit</button></div>`;
-    if (s === 4) return `${bar(100)}<div class="cw-thanks">
+    return `${bar(100)}<div class="cw-thanks">
       <div class="cw-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
       <h2>Thank you for submitting your claim!</h2>
       <p>Your claim has been received and is being reviewed by one of our team. You can expect a response within <b>24 hours</b>.</p>
-      <div class="cw-btns"><button class="cw-btn" data-go="5">View your claim</button></div></div>`;
-    const lines = claimLines(), first = lines[0] || {};
-    return `<h2>Claim details</h2>
-      <div class="cw-status"><div class="lbl">Claim Status: New</div><div style="font-size:0.88em">Your claim has been opened and is being reviewed. This may take 2 - 3 days.</div></div>
-      <dl class="cw-kv">
-        <dt>Claim number</dt><dd>${flow.claimNo}</dd>
-        <dt>Order number</dt><dd>#${esc(state.orderNum)}</dd>
-        <dt>Order date</dt><dd>${fmtDate(placedDate())}</dd>
-        <dt>Submitted date</dt><dd>${fmtDate(new Date())}</dd>
-        <dt>Claim reason</dt><dd>${esc(first.issue || '—')}</dd>
-        <dt>Requested resolution</dt><dd>${esc(first.resolution || '—')}</dd>
-        <dt>Claim items</dt><dd>${lines.map(l => esc(l.p.name || 'Product')).join(', ') || '—'}</dd>
-        <dt>Package Protection</dt><dd>Package protection was included with this order</dd>
-      </dl>
-      <div class="cw-btns"><a class="cw-btn outline" href="${esc($('cwHelp').href)}" target="_blank" rel="noopener">Contact Support</a></div>`;
+      <div class="cw-btns"><button class="cw-btn" data-act="done">Done</button></div></div>`;
   }
 
   function renderWizard() {
     $('cwCard').innerHTML = screen();
     $('stepNav').innerHTML = STEPS.map((n, i) => `<button type="button" class="${i === flow.step ? 'on' : ''}" data-jump="${i}">${i + 1}. ${n}</button>`).join('');
-    $('bPath').textContent = flow.step === 0 ? '/' : flow.step === 5 ? '/claim-status' : '/claims';
+    $('bPath').textContent = flow.step === 0 ? '/' : '/claims';
     saveShared();
   }
   function go(step, reset) { if (reset) flow = newFlow(); flow.step = step; renderWizard(); }
@@ -454,6 +433,7 @@
     const b = e.target.closest('button,[data-photo]');
     if (!b) return;
     if (b.dataset.go) { if (b.disabled) return; return go(+b.dataset.go); }
+    if (b.dataset.act === 'done') return go(0, true);
     if (b.dataset.act === 'lookup') {
       flow.lookupEmail = $('lkEmail').value; flow.lookupOrder = $('lkOrder').value;
       const okOrder = flow.lookupOrder.replace('#', '').trim() === String(state.orderNum).replace('#', '').trim();
