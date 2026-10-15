@@ -23,6 +23,9 @@
   .xp-step.on i { color:var(--p,#6675FF); border-color:transparent; }
   .xp-step.done i { background:var(--p,#6675FF); color:#fff; border-color:transparent; }
   .xp-arrow { color:#b3b8cc; font-size:13px; }
+  .xp-dev { flex:0 0 auto; display:inline-flex; background:#f3f4f9; border-radius:30px; padding:3px; }
+  .xp-dev button { font:inherit; font-size:12px; font-weight:600; color:#5b6380; background:none; border:none; border-radius:30px; padding:5px 11px; cursor:pointer; white-space:nowrap; }
+  .xp-dev button.on { background:#fff; color:#141a2e; box-shadow:0 1px 4px rgba(20,26,60,0.12); }
   .xp-replay { flex:0 0 auto; font:inherit; font-size:12px; font-weight:600; color:#5b6380; background:none; border:none; cursor:pointer; white-space:nowrap; }
 
   /* ── Panes ── */
@@ -44,6 +47,21 @@
   .xp-nudge { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#fff; background:rgba(20,26,46,0.88); padding:10px 16px; border-radius:30px; box-shadow:0 8px 24px rgba(0,0,0,0.2); white-space:nowrap; cursor:pointer; animation:bob 1.8s ease-in-out infinite; }
   @keyframes bob { 0%,100% { transform:translate(-50%,0); } 50% { transform:translate(-50%,-5px); } }
 
+  /* Desktop: the phone wrapper is transparent to layout */
+  .xp-phone { display:contents; }
+  .xp-status, .mail-back { display:none; }
+
+  /* Mobile: the same journey inside a phone, one screen at a time */
+  body.mobile .xp-main { justify-content:center; align-items:flex-start; overflow:auto; }
+  body.mobile .xp-phone { display:flex; flex-direction:column; flex:0 0 auto; width:390px; height:844px; background:#fff; border:12px solid #17171c; border-radius:52px; overflow:hidden; box-shadow:0 18px 50px rgba(20,24,60,0.22); }
+  body.mobile .xp-status { display:flex; flex:0 0 auto; height:40px; align-items:center; justify-content:space-between; padding:2px 28px 0 32px; font:600 14px/1 -apple-system,BlinkMacSystemFont,sans-serif; color:#111; position:relative; }
+  body.mobile .xp-status::after { content:''; position:absolute; left:50%; top:9px; width:104px; height:28px; margin-left:-52px; border-radius:20px; background:#17171c; }
+  body.mobile .xp-pane { border-radius:0; box-shadow:none; flex:1; }
+  body.mobile .mail-back { display:block; font-size:14px; color:#2f6fed; margin-bottom:8px; }
+  body.mobile .mail-head { padding:4px 16px 12px; }
+  body.mobile .mail-subj { font-size:17px; }
+  body.mobile.show-claim .xp-status { background:#f6f6f8; }
+
   /* Narrow (e.g. inside a Vault frame): one pane at a time */
   body.narrow .xp-top { padding-right:76px; }   /* room for the Vault frame's "Open ↗" button */
   body.narrow .xp-main { padding:10px; }
@@ -63,11 +81,15 @@
       <button class="xp-step" data-step="delivered"><i>2</i>Delivered email</button><span class="xp-arrow">→</span>
       <button class="xp-step" data-step="claim"><i>3</i>File a claim</button>
     </nav>
+    <div class="xp-dev" id="devSeg" title="Preview on desktop or a phone"><button type="button" data-dev="desktop" class="on">🖥 Desktop</button><button type="button" data-dev="mobile">📱 Mobile</button></div>
     <button class="xp-replay" type="button" id="replay">↺ Replay</button>
   </header>
   <main class="xp-main">
+   <div class="xp-phone" id="phone">
+    <div class="xp-status"><span>9:41</span><span>●●● ▮</span></div>
     <section class="xp-pane xp-mail">
       <div class="mail-head">
+        <div class="mail-back">‹ Inbox</div>
         <div class="mail-subj" id="subj"></div>
         <div class="mail-from"><span class="mail-av" id="av"></span><span><b id="fromName"></b> &lt;care@shipinsure.io&gt;<br>to me</span><span class="mail-time" id="when"></span></div>
       </div>
@@ -77,6 +99,7 @@
       <iframe id="claimF" title="Claim wizard"></iframe>
       <div class="xp-nudge" id="nudge">✉️ Click “File a Claim” in the email to start</div>
     </section>
+   </div>
   </main>
 
 <script>
@@ -148,8 +171,25 @@
     setStep('confirm');
   });
 
-  const fit = () => document.body.classList.toggle('narrow', innerWidth < 980);
-  addEventListener('resize', fit); fit();
+  // Desktop / Mobile. Mobile = one screen at a time inside a phone, scaled to fit; ?…#…&dev=mobile opens that way.
+  let mobile = hp('dev') === 'mobile';
+  const fit = () => {
+    document.body.classList.toggle('narrow', mobile || innerWidth < 980);
+    document.body.classList.toggle('mobile', mobile);
+    const ph = document.getElementById('phone'), main = document.querySelector('.xp-main');
+    ph.style.zoom = mobile ? Math.min(1, (main.clientHeight - 24) / 868, (main.clientWidth - 24) / 414) : '';
+  };
+  const tellDevice = () => [emailF, claimF].forEach(f => { try { f.contentWindow.postMessage({ siExp: 'device', mobile: mobile }, '*'); } catch (e) {} });
+  function setDevice(dev) {
+    mobile = dev === 'mobile';
+    document.querySelectorAll('#devSeg button').forEach(b => b.classList.toggle('on', (b.dataset.dev === 'mobile') === mobile));
+    fit(); tellDevice();
+    history.replaceState(null, '', location.pathname + location.search + (location.hash || '#').replace(/&dev=[^&]*/, '') + (mobile ? '&dev=mobile' : ''));
+  }
+  document.getElementById('devSeg').addEventListener('click', e => { const b = e.target.closest('[data-dev]'); if (b) setDevice(b.dataset.dev); });
+  [emailF, claimF].forEach(f => f.addEventListener('load', tellDevice));
+  addEventListener('resize', fit);
+  setDevice(mobile ? 'mobile' : 'desktop');
   setStep('confirm');
 </script>
 </body>
