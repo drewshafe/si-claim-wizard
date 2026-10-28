@@ -214,6 +214,8 @@
   body.pm .sec { border-color:#22222b; }
   body.pm .prod .rm { background:#1a1a20; }
 </style>
+<script src="https://drewshafe.github.io/si-roi-calculator/sb.js"></script>
+<script src="https://drewshafe.github.io/si-rep-hub/folder-bar.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -670,6 +672,21 @@
   syncInputs();
   applyTheme();
   renderWizard();
+
+  // ── Merchant folder save/load (Rep Hub → Merchant Folders) ──
+  if (!VIEW && window.SIFolderBar) SIFolderBar.mount({
+    kind: 'claim', tool: 'Claim Wizard', before: document.querySelector('.wrap'),
+    getData: () => { const out = {}; Object.keys(DEFAULTS).forEach(k => { if (JSON.stringify(state[k]) !== JSON.stringify(DEFAULTS[k])) out[k] = state[k]; }); return out; },
+    applyData: d => {
+      state = Object.assign(clone(DEFAULTS), d);
+      if (!Array.isArray(state.products) || !state.products.length) state.products = clone(DEFAULTS.products);
+      if (!FONTS.includes(state.font1)) state.font1 = DEFAULTS.font1;
+      if (!FONTS.includes(state.font2)) state.font2 = DEFAULTS.font2;
+      ['logoChecks', 'faviconChecks', 'heroChecks'].forEach(id => $(id).innerHTML = '');
+      flow = newFlow(); syncInputs(); applyTheme(); renderWizard();
+    },
+    defaultTitle: () => 'Claims – ' + (state.storeName || 'Merchant')
+  });
 </script>
 </body>
 </html>
