@@ -213,6 +213,20 @@
   body.pm .btn-add, body.pm .restart { color:#d4af37; }
   body.pm .sec { border-color:#22222b; }
   body.pm .prod .rm { background:#1a1a20; }
+  /* Branding from the merchant folder */
+  .bf { margin:-8px 0 18px; position:relative; }
+  .bf-btn { width:100%; padding:10px 14px; border-radius:30px; border:1px dashed var(--accent); background:transparent; color:var(--accent); font:inherit; font-weight:700; font-size:0.86em; cursor:pointer; text-align:center; }
+  .bf-btn:hover { background:var(--chip); }
+  .bf-dd { position:absolute; top:100%; left:0; right:0; margin-top:6px; max-height:340px; overflow:auto; background:#fff; border:1px solid #d8dbe8; border-radius:14px; box-shadow:0 14px 40px rgba(20,24,60,.18); padding:6px; z-index:60; }
+  .bf-dd .hd { font-size:0.7em; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#6b7090; padding:6px 10px 4px; }
+  .bf-dd .it { display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; border:0; background:none; font:inherit; padding:8px 10px; border-radius:9px; cursor:pointer; color:#1d2240; }
+  .bf-dd .it:hover, .bf-dd .it:focus-visible { background:#f3f4fb; outline:none; }
+  .bf-dd .it b { font-weight:600; font-size:0.9em; }
+  .bf-dd .it span { font-size:0.78em; color:#6b7090; }
+  .bf-dd .em { padding:10px; color:#6b7090; font-size:0.84em; line-height:1.45; }
+  body.pm .bf-dd { background:#15151c; border-color:#2e2b22; }
+  body.pm .bf-dd .it { color:#ece6d6; }
+  body.pm .bf-dd .it:hover { background:#1f1b10; }
 </style>
 <script src="https://drewshafe.github.io/si-roi-calculator/sb.js"></script>
 <script src="https://drewshafe.github.io/si-rep-hub/folder-bar.js"></script>
@@ -225,6 +239,7 @@
     <div class="card">
       <h1>Global Branding</h1>
       <p class="sub">Upload your branding assets and required information to have a white labeled experience for your customers. The preview on the right is the Claims Wizard.</p>
+      <div class="bf" id="brandFromFolder"></div>
 
       <div class="field"><input type="text" id="subdomain" placeholder=" " autocomplete="off"><label>Sub Domain</label><span class="suffix">.shipinsure.net</span></div>
       <div class="field"><input type="text" id="storeName" placeholder=" " autocomplete="off"><label>Store Name</label></div>
@@ -672,6 +687,69 @@
   syncInputs();
   applyTheme();
   renderWizard();
+
+  const BF_NAMES = { storeName: 'store name', logo: 'logo', hero: 'background image', primary: 'primary color', font1: 'primary font' };
+  const bfContrast = hex => { const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  function bfFromFolder(f) {
+    return { storeName: f.name, logo: f.logo || null, hero: f.banner || null, primary: f.accent, font1: FONTS.includes(f.font) ? f.font : null };
+  }
+  function bfFromOther(d) {   // an Email Automation save
+    return { storeName: d.storeName, logo: d.logo || null, primary: normHex(d.btnColor) };
+  }
+
+  // ── Branding from the merchant folder: the folder's own branding (logo, brand color, font,
+  // banner from Custom Build) or the branding in this merchant's Email Automation save. Only
+  // branding fields change; order details and test data stay as they are. ──
+  function bfFolderBrand(m) {
+    const cb = (m.cb || {}).branding || {}, b = (m.bld || {}).branding || {};
+    return {
+      name: m.name || '', logo: m.logo_path || b.logoUrl || cb.logoUrl || '',
+      accent: normHex(b.accent || cb.accentHex || ''), font: b.hdrFont || b.font || cb.hdrFont || cb.font || '',
+      banner: b.bannerUrl || cb.bannerUrl || ''
+    };
+  }
+  function bfSync() {
+    const el = $('brandFromFolder'); if (!el) return;
+    const a = !VIEW && window.SIsb && SIsb.getActiveFolder();
+    el.innerHTML = a ? `<button type="button" class="bf-btn" aria-haspopup="true" onclick="bfMenu()">📁 Load branding from ${esc(a.name)} ▾</button>` : '';
+  }
+  async function bfMenu() {
+    const box = $('brandFromFolder'); let dd = box.querySelector('.bf-dd');
+    if (dd) { dd.remove(); return; }
+    const a = SIsb.getActiveFolder(); if (!a) return;
+    dd = document.createElement('div'); dd.className = 'bf-dd'; dd.setAttribute('role', 'menu'); dd.innerHTML = '<div class="em">Loading…</div>';
+    box.appendChild(dd);
+    const items = [];
+    try {
+      const m = await SIsb.getMerchant(a.id), f = bfFolderBrand(m);
+      const has = [f.logo && 'logo', f.accent && 'brand color', f.font && FONTS.includes(f.font) && 'font', f.banner && 'background image'].filter(Boolean);
+      if (has.length) items.push({ src: 'folder', title: 'Folder branding', sub: has.join(', ') });
+    } catch (e) {}
+    try {
+      if (await SIsb.currentUser()) (await SIsb.listAssets(a.id, 'email')).filter(r => r.source !== 'upload' && r.source !== 'link')
+        .forEach(r => items.push({ src: 'asset', id: r.id, title: 'Email Automation · ' + (r.title || 'Untitled'), sub: 'store name, logo, button color → primary color' }));
+      else items.push({ note: 'Sign in from the folder bar to also use this merchant’s Email Automation saves.' });
+    } catch (e) {}
+    const real = items.filter(i => !i.note);
+    dd.innerHTML = `<div class="hd">Branding in ${esc(a.name)}</div>` +
+      (real.length ? items.map((it, i) => it.note ? `<div class="em">${esc(it.note)}</div>` : `<button type="button" class="it" role="menuitem" data-i="${i}"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></button>`).join('')
+        : `<div class="em">No branding saved in ${esc(a.name)} yet: no folder logo or brand color, and no Email Automation saves.${items[0] && items[0].note ? ' ' + esc(items[0].note) : ''}</div>`);
+    dd.onclick = async ev => {
+      const b = ev.target.closest('.it'); if (!b) return;
+      const it = items[+b.dataset.i]; dd.remove();
+      try {
+        const got = it.src === 'folder' ? bfFromFolder(bfFolderBrand(await SIsb.getMerchant(a.id))) : bfFromOther((await SIsb.getAsset(it.id)).data || {});
+        const keys = Object.keys(got).filter(k => got[k] != null && got[k] !== '');
+        if (!keys.length) { showToast('Nothing to use in that save'); return; }
+        keys.forEach(k => { state[k] = got[k]; });
+        ['logoChecks', 'faviconChecks', 'heroChecks'].forEach(id => $(id).innerHTML = ''); syncInputs(); applyTheme(); renderWizard();
+        showToast('Branding loaded: ' + keys.map(k => BF_NAMES[k] || k).join(', '));
+      } catch (e) { showToast('Couldn’t load: ' + (e.message || e)); }
+    };
+  }
+  document.addEventListener('click', e => { const dd = document.querySelector('#brandFromFolder .bf-dd'); if (dd && !$('brandFromFolder').contains(e.target)) dd.remove(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { const dd = document.querySelector('#brandFromFolder .bf-dd'); if (dd) dd.remove(); } });
+  if (window.SIsb) { SIsb.onActiveFolder(bfSync); bfSync(); }
 
   // ── Merchant folder save/load (Rep Hub → Merchant Folders) ──
   if (!VIEW && window.SIFolderBar) SIFolderBar.mount({
